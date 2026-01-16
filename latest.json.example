@@ -1,0 +1,23 @@
+{
+  "version": "0.2.0",
+  "notes": "Nueva versión con mejoras de rendimiento y corrección de errores",
+  "pub_date": "2026-01-16T00:00:00.000Z",
+  "platforms": {
+    "darwin-aarch64": {
+      "signature": "",
+      "url": "https://github.com/tu-usuario/tu-repo/releases/download/v0.2.0/tauri-app_0.2.0_aarch64.dmg"
+    },
+    "darwin-x86_64": {
+      "signature": "",
+      "url": "https://github.com/tu-usuario/tu-repo/releases/download/v0.2.0/tauri-app_0.2.0_x64.dmg"
+    },
+    "linux-x86_64": {
+      "signature": "",
+      "url": "https://github.com/tu-usuario/tu-repo/releases/download/v0.2.0/tauri-app_0.2.0_amd64.AppImage"
+    },
+    "windows-x86_64": {
+      "signature": "",
+      "url": "https://github.com/tu-usuario/tu-repo/releases/download/v0.2.0/tauri-app_0.2.0_x64.msi"
+    }
+  }
+}
