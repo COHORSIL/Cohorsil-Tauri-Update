@@ -2,52 +2,64 @@
 
 ## ✅ Configuración Actual
 
-- **Repositorio de actualizaciones:** `COHORSIL/Cohorsil-Tauri-Update` (privado)
+- **Repositorio de actualizaciones:** `COHORSIL/Cohorsil-Tauri-Update` (público)
 - **Endpoint:** `https://github.com/COHORSIL/Cohorsil-Tauri-Update/releases/latest/download/latest.json`
 - **Estado:** ✅ Configurado y listo para usar
+- **Plataformas soportadas:** macOS (Intel + Apple Silicon), Windows, Linux
 
 ---
 
 ## 📦 Publicar una Actualización
 
-### Opción 1: Automatizado (RECOMENDADO) ⚡
+### Opción 1: GitHub Actions (RECOMENDADO - Multi-Plataforma Automático) ⚡
+
+Compila automáticamente para **macOS, Windows y Linux**:
 
 ```bash
-# 1. Configurar token (solo primera vez)
-export GH_TOKEN=tu_token_de_github
+# 1. Actualizar versiones manualmente
+# Edita: package.json, src-tauri/Cargo.toml, src-tauri/tauri.conf.json
 
-# 2. Publicar
+# 2. Commit y crear tag
+git add .
+git commit -m "chore: bump version to v0.2.0"
+git tag v0.2.0
+git push origin main
+git push origin v0.2.0
+```
+
+**GitHub Actions se encarga del resto:**
+
+- ✅ Compila para macOS (Intel y Apple Silicon)
+- ✅ Compila para Windows
+- ✅ Compila para Linux
+- ✅ Crea el release automáticamente
+- ✅ Sube todos los instaladores
+- ✅ Genera y sube `latest.json` con todas las plataformas
+
+### Opción 2: Script Local (Solo tu Plataforma Actual) 🔧
+
+Compila solo para tu sistema operativo actual (macOS en tu caso):
+
+```bash
 ./scripts/publish-update.sh 0.2.0 "Descripción de cambios"
 ```
 
-### Opción 2: Manual 🔧
-
-Ver guía completa en: **`GUIA_PUBLICACION.md`**
+**Limitación:** Solo genera instalador para macOS.
 
 ---
 
-## 🔑 Configurar Token de GitHub (Primera Vez)
-
-1. Ve a: https://github.com/settings/tokens
-2. Genera un token con permisos `repo`
-3. Configúralo:
+## 🔑 Configurar GitHub CLI (Solo Primera Vez)
 
 ```bash
-# Temporal (solo esta sesión)
-export GH_TOKEN=tu_token_aqui
+# Instalar
+brew install gh
 
-# Permanente (recomendado)
-echo 'export GH_TOKEN=tu_token_aqui' >> ~/.zshrc
-source ~/.zshrc
+# Autenticarse
+gh auth login
+
+# Verificar
+gh auth status
 ```
-
----
-
-## 📚 Documentación Completa
-
-- **`GUIA_PUBLICACION.md`** - Guía paso a paso para publicar actualizaciones
-- **`ACTUALIZACIONES.md`** - Documentación técnica del sistema
-- **`scripts/publish-update.sh`** - Script automatizado
 
 ---
 
@@ -64,25 +76,47 @@ Muestra notificación
     ↓
 Usuario actualiza
     ↓
+Descarga el instalador correcto para su plataforma
+    ↓
 ¡Listo! 🎉
 ```
 
 ---
 
-## ⚠️ Importante
+## 🖥️ Compilación Multi-Plataforma
 
-- **Nunca subas tu token a Git** (ya está en `.gitignore`)
-- **Usa versionado semántico:** `MAJOR.MINOR.PATCH`
-- **Prueba antes de publicar**
+### ¿Puedo compilar para Windows desde macOS?
+
+**No directamente**, pero tienes opciones:
+
+1. **GitHub Actions** (recomendado): Compila automáticamente en la nube para todas las plataformas
+2. **Máquina virtual**: Usa Windows en VM para compilar manualmente
+3. **Dual boot**: Arranca en Windows para compilar
+4. **Otra computadora**: Usa una PC con Windows
+
+**GitHub Actions es la mejor opción** porque:
+
+- ✅ Es gratis
+- ✅ Automático
+- ✅ Compila para todas las plataformas
+- ✅ No necesitas otras máquinas
+
+---
+
+## 📚 Documentación Completa
+
+- **Guía rápida:** `README_ACTUALIZACIONES.md`
+- **Guía completa:** `GUIA_PUBLICACION.md`
+- **Documentación técnica:** `ACTUALIZACIONES.md`
 
 ---
 
 ## 🆘 Ayuda Rápida
 
-### Ver si el token está configurado
+### Ver si GitHub CLI está configurado
 
 ```bash
-echo $GH_TOKEN
+gh auth status
 ```
 
 ### Dar permisos al script
@@ -95,6 +129,12 @@ chmod +x scripts/publish-update.sh
 
 ```bash
 open https://github.com/COHORSIL/Cohorsil-Tauri-Update/releases
+```
+
+### Probar endpoint de actualizaciones
+
+```bash
+curl https://github.com/COHORSIL/Cohorsil-Tauri-Update/releases/latest/download/latest.json
 ```
 
 ---

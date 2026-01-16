@@ -5,12 +5,6 @@
 
 set -e
 
-# Cargar variables de entorno desde .env si existe
-if [ -f ".env" ]; then
-    echo "📄 Cargando variables desde .env..."
-    export $(cat .env | grep -v '^#' | xargs)
-fi
-
 # Colores para output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -28,10 +22,11 @@ VERSION=$1
 NOTES=${2:-"Nueva actualización disponible"}
 REPO="COHORSIL/Cohorsil-Tauri-Update"
 
-# Verificar que existe el token de GitHub
-if [ -z "$GH_TOKEN" ]; then
-    echo -e "${RED}Error: Variable GH_TOKEN no está configurada${NC}"
-    echo "Ejecuta: export GH_TOKEN=tu_token_aqui"
+# Verificar que gh CLI está instalado
+if ! command -v gh &> /dev/null; then
+    echo -e "${RED}Error: GitHub CLI (gh) no está instalado${NC}"
+    echo "Instálalo con: brew install gh"
+    echo "Luego autentícate con: gh auth login"
     exit 1
 fi
 
@@ -124,55 +119,19 @@ git push origin "v${VERSION}"
 
 echo -e "${GREEN}✓ Cambios subidos a Git${NC}"
 
-# 5. Crear release en GitHub usando la API
+# 5. Crear release en GitHub usando gh CLI
 echo -e "${YELLOW}🎉 Creando GitHub Release...${NC}"
 
-# Crear el release
-RELEASE_RESPONSE=$(curl -s -X POST \
-  -H "Authorization: token ${GH_TOKEN}" \
-  -H "Accept: application/vnd.github.v3+json" \
-  "https://api.github.com/repos/${REPO}/releases" \
-  -d "{
-    \"tag_name\": \"v${VERSION}\",
-    \"name\": \"v${VERSION}\",
-    \"body\": \"${NOTES}\",
-    \"draft\": false,
-    \"prerelease\": false
-  }")
+gh release create "v${VERSION}" \
+  --repo "${REPO}" \
+  --title "v${VERSION}" \
+  --notes "${NOTES}" \
+  "${BUNDLE_FILE}" \
+  latest.json
 
-RELEASE_ID=$(echo "$RELEASE_RESPONSE" | grep -o '"id": [0-9]*' | head -1 | grep -o '[0-9]*')
+echo -e "${GREEN}✓ Release creado y archivos subidos${NC}"
 
-if [ -z "$RELEASE_ID" ]; then
-    echo -e "${RED}Error al crear el release${NC}"
-    echo "$RELEASE_RESPONSE"
-    exit 1
-fi
-
-echo -e "${GREEN}✓ Release creado (ID: ${RELEASE_ID})${NC}"
-
-# 6. Subir el bundle
-echo -e "${YELLOW}📦 Subiendo bundle (${BUNDLE_NAME})...${NC}"
-
-curl -s -X POST \
-  -H "Authorization: token ${GH_TOKEN}" \
-  -H "Content-Type: application/octet-stream" \
-  --data-binary "@${BUNDLE_FILE}" \
-  "https://uploads.github.com/repos/${REPO}/releases/${RELEASE_ID}/assets?name=${BUNDLE_NAME}" > /dev/null
-
-echo -e "${GREEN}✓ Bundle subido${NC}"
-
-# 7. Subir latest.json
-echo -e "${YELLOW}📄 Subiendo latest.json...${NC}"
-
-curl -s -X POST \
-  -H "Authorization: token ${GH_TOKEN}" \
-  -H "Content-Type: application/json" \
-  --data-binary "@latest.json" \
-  "https://uploads.github.com/repos/${REPO}/releases/${RELEASE_ID}/assets?name=latest.json" > /dev/null
-
-echo -e "${GREEN}✓ latest.json subido${NC}"
-
-# 8. Limpiar
+# 6. Limpiar
 rm latest.json
 
 echo ""

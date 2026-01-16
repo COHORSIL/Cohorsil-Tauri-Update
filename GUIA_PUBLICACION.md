@@ -4,65 +4,47 @@ Esta guía te muestra cómo publicar actualizaciones para tu aplicación Tauri.
 
 ## 📋 Requisitos Previos
 
-1. **Token de GitHub** configurado como variable de entorno
-2. **Permisos** en el repositorio `COHORSIL/Cohorsil-Tauri-Update`
+1. **GitHub CLI (gh)** instalado y autenticado
+2. **Permisos** en el repositorio `COHORSIL/Cohorsil-Tauri-Update` (público)
 3. **Build tools** instalados (Rust, Node.js, etc.)
 
 ---
 
-## 🔑 Configurar Token de GitHub (Solo Primera Vez)
+## 🔑 Configurar GitHub CLI (Solo Primera Vez)
 
-### 1. Crear el Token
-
-1. Ve a GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)
-2. Click en "Generate new token (classic)"
-3. Nombre: `Cohorsil Tauri Updates`
-4. Permisos necesarios:
-   - ✅ `repo` (Full control of private repositories)
-5. Click en "Generate token"
-6. **Copia el token** (solo se muestra una vez)
-
-### 2. Configurar el Token en tu Sistema
-
-**Opción A: Temporal (solo para esta sesión)**
+### 1. Instalar GitHub CLI
 
 ```bash
-export GH_TOKEN=tu_token_completo_aqui
+brew install gh
 ```
 
-**Opción B: Permanente (recomendado)**
-
-Agrega al final de tu archivo `~/.zshrc` o `~/.bash_profile`:
+### 2. Autenticarse
 
 ```bash
-# GitHub Token para Cohorsil Tauri Updates
-export GH_TOKEN=tu_token_completo_aqui
+gh auth login
 ```
 
-Luego recarga:
+Sigue las instrucciones:
+
+- Selecciona "GitHub.com"
+- Selecciona "HTTPS"
+- Autentica con tu navegador
+
+### 3. Verificar autenticación
 
 ```bash
-source ~/.zshrc
+gh auth status
 ```
 
-### 3. Verificar que está configurado
-
-```bash
-echo $GH_TOKEN
-```
-
-Debería mostrar tu token.
+Debería mostrar que estás autenticado.
 
 ---
 
 ## 🎯 Publicar una Actualización
 
-### Método 1: Script Automatizado (RECOMENDADO)
+### Método Automatizado (RECOMENDADO) ⚡
 
 ```bash
-# Dar permisos de ejecución (solo primera vez)
-chmod +x scripts/publish-update.sh
-
 # Publicar actualización
 ./scripts/publish-update.sh 0.2.0 "Mejoras en la interfaz y corrección de bugs"
 ```
@@ -73,11 +55,11 @@ El script hace **TODO automáticamente**:
 2. ✅ Compila la aplicación (`npm run tauri build`)
 3. ✅ Genera el archivo `latest.json`
 4. ✅ Crea commit y tag en Git
-5. ✅ Crea el Release en GitHub
+5. ✅ Crea el Release en GitHub usando `gh CLI`
 6. ✅ Sube el instalador (.dmg, .msi, etc.)
 7. ✅ Sube el `latest.json`
 
-### Método 2: Manual (Paso a Paso)
+### Método Manual (Paso a Paso)
 
 Si prefieres hacerlo manualmente:
 
@@ -147,8 +129,6 @@ gh release create v0.2.0 \
   latest.json
 ```
 
-O manualmente en: https://github.com/COHORSIL/Cohorsil-Tauri-Update/releases/new
-
 ---
 
 ## 🔄 Flujo Completo de Actualización
@@ -182,7 +162,7 @@ O manualmente en: https://github.com/COHORSIL/Cohorsil-Tauri-Update/releases/new
 ### Actualización Menor (Bug Fixes)
 
 ```bash
-./scripts/publish-update.sh 0.1.1 "Corrección de errores menores"
+./scripts/publish-update.sh 0.1.2 "Corrección de errores menores"
 ```
 
 ### Actualización con Nuevas Funcionalidades
@@ -201,6 +181,14 @@ O manualmente en: https://github.com/COHORSIL/Cohorsil-Tauri-Update/releases/new
 
 ## 🧪 Probar Actualizaciones
 
+### Verificar que el repositorio es público
+
+```bash
+curl https://github.com/COHORSIL/Cohorsil-Tauri-Update/releases/latest/download/latest.json
+```
+
+Debería devolver el JSON con la información de la versión.
+
 ### En Desarrollo
 
 1. Instala la versión actual (ej: 0.1.0)
@@ -208,21 +196,15 @@ O manualmente en: https://github.com/COHORSIL/Cohorsil-Tauri-Update/releases/new
 3. Abre la app v0.1.0
 4. Debería detectar automáticamente la actualización
 
-### Verificar Manualmente
-
-```bash
-# Ver el latest.json publicado
-curl https://github.com/COHORSIL/Cohorsil-Tauri-Update/releases/latest/download/latest.json
-```
-
 ---
 
 ## ⚠️ Solución de Problemas
 
-### Error: "GH_TOKEN no está configurado"
+### Error: "gh: command not found"
 
 ```bash
-export GH_TOKEN=tu_token_aqui
+brew install gh
+gh auth login
 ```
 
 ### Error: "Permission denied"
@@ -241,26 +223,13 @@ ls -la src-tauri/target/release/bundle/
 
 ### La app no detecta actualizaciones
 
-1. Verifica que el repositorio sea **público** o que el `latest.json` sea accesible
+1. Verifica que el repositorio sea **público**
 2. Revisa la consola de la app para ver errores
 3. Verifica la URL en `src-tauri/tauri.conf.json`
-
----
-
-## 🔐 Seguridad
-
-### ⚠️ IMPORTANTE: Nunca compartas tu token
-
-- ❌ No lo subas a Git
-- ❌ No lo compartas en mensajes
-- ❌ No lo incluyas en el código
-
-### Buenas Prácticas
-
-1. **Usa variables de entorno** para el token
-2. **Agrega `.env` al `.gitignore`**
-3. **Rota el token** periódicamente
-4. **Revoca tokens** que no uses
+4. Prueba manualmente el endpoint:
+   ```bash
+   curl https://github.com/COHORSIL/Cohorsil-Tauri-Update/releases/latest/download/latest.json
+   ```
 
 ---
 
@@ -283,7 +252,7 @@ Sigue el formato `MAJOR.MINOR.PATCH`:
 ## 📚 Recursos
 
 - [Documentación Tauri Updater](https://tauri.app/plugin/updater/)
-- [GitHub API - Releases](https://docs.github.com/en/rest/releases)
+- [GitHub CLI](https://cli.github.com/)
 - [Semantic Versioning](https://semver.org/)
 
 ---
@@ -292,7 +261,8 @@ Sigue el formato `MAJOR.MINOR.PATCH`:
 
 Antes de publicar, verifica:
 
-- [ ] Token de GitHub configurado (`echo $GH_TOKEN`)
+- [ ] GitHub CLI instalado (`gh --version`)
+- [ ] Autenticado en GitHub (`gh auth status`)
 - [ ] Cambios commiteados en Git
 - [ ] Versión actualizada en los 3 archivos
 - [ ] Build funciona correctamente
