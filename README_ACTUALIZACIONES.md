@@ -11,44 +11,27 @@
 
 ## 📦 Publicar una Actualización
 
-### Opción 1: GitHub Actions (RECOMENDADO - Multi-Plataforma Automático) ⚡
+### Método Principal: Script Local 🔧
 
-Compila automáticamente para **macOS, Windows y Linux**:
-
-```bash
-# 1. Actualizar versiones manualmente
-# Edita: package.json, src-tauri/Cargo.toml, src-tauri/tauri.conf.json
-
-# 2. Commit y crear tag
-git add .
-git commit -m "chore: bump version to v0.2.0"
-git tag v0.2.0
-git push origin main
-git push origin v0.2.0
-```
-
-**GitHub Actions se encarga del resto:**
-
-- ✅ Compila para macOS (Intel y Apple Silicon)
-- ✅ Compila para Windows
-- ✅ Compila para Linux
-- ✅ Crea el release automáticamente
-- ✅ Sube todos los instaladores
-- ✅ Genera y sube `latest.json` con todas las plataformas
-
-### Opción 2: Script Local (Solo tu Plataforma Actual) 🔧
-
-Compila solo para tu sistema operativo actual (macOS en tu caso):
+Este método compila la aplicación en tu máquina actual y la sube a GitHub.
 
 ```bash
+# Publicar nueva versión
 ./scripts/publish-update.sh 0.2.0 "Descripción de cambios"
 ```
 
-**Limitación:** Solo genera instalador para macOS.
+El script automáticamente:
+
+1. Actualiza versiones
+2. Compila la App
+3. Genera `latest.json`
+4. Sube todo a GitHub Releases
+
+**Nota:** Solo generará el instalador para tu sistema operativo actual (macOS).
 
 ---
 
-## 🔑 Configurar GitHub CLI (Solo Primera Vez)
+## 🔑 Configurar GitHub CLI (Necesario)
 
 ```bash
 # Instalar
