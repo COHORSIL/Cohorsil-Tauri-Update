@@ -1,4 +1,4 @@
-name: Release Windows Robust
+name: Release Windows Base64
 on:
   push:
     tags:
@@ -11,7 +11,7 @@ jobs:
     runs-on: windows-latest
     defaults:
       run:
-        shell: pwsh # IMPORTANTE: Usar PowerShell nativo
+        shell: pwsh
 
     steps:
       - name: Checkout repository
@@ -28,44 +28,23 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Create Key File (Robust Windows)
+      - name: Decode Key (Base64 Strategy)
         env:
-          MY_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          KEY_BASE64: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         run: |
-          # Escribir la clave a un archivo usando codificación UTF8 explícita
-          # Esto evita problemas de corrupción de caracteres en Windows
+          # Decodificar Base64 a archivo binario puro
           $KeyFile = "$PWD/tauri.key"
-          [System.IO.File]::WriteAllText($KeyFile, $env:MY_KEY, [System.Text.Encoding]::UTF8)
+          [System.IO.File]::WriteAllBytes($KeyFile, [System.Convert]::FromBase64String($env:KEY_BASE64))
 
-          echo "✅ Clave privada escrita en: $KeyFile"
-
-          # Verificar que existe y tiene contenido (sin mostrar la clave)
-          if (Test-Path $KeyFile) {
-            echo "El archivo existe."
-            echo "Tamaño: $((Get-Item $KeyFile).Length) bytes"
-          } else {
-            echo "❌ ERROR FATAL: El archivo de clave no se creó."
-            exit 1
-          }
+          echo "✅ Clave decodificada a: $KeyFile"
 
       - name: Build and Sign
         env:
-          # Apuntamos a la RUTA del archivo, no al contenido
           TAURI_SIGNING_PRIVATE_KEY: "./tauri.key"
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Ejecutar build con verbose para ver si firma
           npm run tauri build -- --verbose
-
-      - name: Verify Artifacts
-        run: |
-          # Verificar si se generaron los archivos de firma antes de subir
-          $MsiSig = Get-ChildItem -Path "src-tauri/target/release/bundle/msi/*.sig" -Recurse -ErrorAction SilentlyContinue
-          $Json = Get-ChildItem -Path "src-tauri/target/release/bundle/msi/latest.json" -Recurse -ErrorAction SilentlyContinue
-
-          if ($MsiSig) { echo "✅ Firma MSI encontrada." } else { echo "⚠️ NO SE ENCONTRÓ FIRMA MSI." }
-          if ($Json) { echo "✅ latest.json encontrado." } else { echo "⚠️ NO SE ENCONTRÓ latest.json" }
 
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v1
