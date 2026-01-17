@@ -39,11 +39,16 @@ jobs:
       - name: install dependencies
         run: npm install
 
+      - name: Create key file
+        run: |
+          echo "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" > tauri_secret.key
+          echo "Key file created"
+
       - name: tauri build and release
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY: "tauri_secret.key"
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: v__VERSION__ # the action automatically replaces \_\_VERSION\_\_ with the user-facing app version
