@@ -1,4 +1,4 @@
-name: Release Windows Direct
+name: Release Windows UTF8 No BOM
 on:
   push:
     tags:
@@ -28,20 +28,24 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # ESCRITURA DIRECTA (SIN DECODIFICAR)
-      - name: Write Key File Directly
+      # DECODIFICAR BASE64 Y ESCRIBIR CON UTF-8 SIN BOM
+      - name: Decode and Write Key
         run: |
           $KeyFile = "$PWD\tauri.key"
-          $SecretContent = "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}"
+          $Base64Content = "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}"
 
-          # Escribir contenido exacto sin procesar
-          [System.IO.File]::WriteAllText($KeyFile, $SecretContent, [System.Text.Encoding]::ASCII)
+          # Decodificar Base64 a bytes
+          $Bytes = [System.Convert]::FromBase64String($Base64Content)
 
-          Write-Host "✅ Clave escrita DIRECTAMENTE (Raw) en: $KeyFile"
-          # Solo mostrar los primeros caracteres seguros
-          if ($SecretContent.Length -gt 10) {
-             Write-Host "DEBUG START: $($SecretContent.Substring(0, 10))..."
-          }
+          # Convertir bytes a string UTF-8
+          $KeyText = [System.Text.Encoding]::UTF8.GetString($Bytes)
+
+          # Escribir con UTF-8 sin BOM
+          $Utf8NoBom = New-Object System.Text.UTF8Encoding $false
+          [System.IO.File]::WriteAllText($KeyFile, $KeyText, $Utf8NoBom)
+
+          Write-Host "✅ Clave decodificada y escrita (UTF-8 sin BOM)"
+          Write-Host "Primeros 30 caracteres: $($KeyText.Substring(0, 30))..."
 
       # COMPILAR
       - name: Build Tauri App
@@ -62,17 +66,17 @@ jobs:
           $SigFile = "$($MsiFile.FullName).sig"
           if (Test-Path $SigFile) {
              $Signature = Get-Content $SigFile
-             Write-Host "✅ Firma OK"
+             Write-Host "✅ Firma generada correctamente"
           } else {
              if ($SignOutput -match "([a-zA-Z0-9+/]{60,}=*)") {
                 $Signature = $matches[1]
                 Write-Host "✅ Firma recuperada del output"
              } else {
-                throw "❌ ERROR DE FIRMA: No se pudo firmar MSI."
+                throw "❌ ERROR: No se pudo generar firma"
              }
           }
 
-          # JSON
+          # Generar JSON
           $Version = "${{ github.ref_name }}".TrimStart('v')
           $PubDate = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
           $DownloadUrl = "https://github.com/${{ github.repository }}/releases/download/v$Version/$($MsiFile.Name)"
@@ -93,7 +97,7 @@ jobs:
 
           $JsonPath = Join-Path (Get-Location) "latest.json"
           Set-Content -Path $JsonPath -Value $JsonContent -Encoding UTF8
-          Write-Host "JSON generado en $JsonPath"
+          Write-Host "✅ latest.json creado"
 
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v1
