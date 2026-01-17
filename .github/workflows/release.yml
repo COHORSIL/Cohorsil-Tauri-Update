@@ -1,4 +1,4 @@
-name: Release Windows Manual
+name: Release Windows ASCII
 on:
   push:
     tags:
@@ -28,63 +28,55 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # DECODIFICAR CLAVE DESDE BASE64 A TEXTO (NO BINARIO)
+      # DECODIFICAR CLAVE DESDE BASE64 A TEXTO ASCII PURO
       - name: Decode Signing Key
         env:
           KEY_BASE64: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         run: |
           $KeyFile = "$PWD\tauri.key"
-          # Convertir Base64 -> Array de Bytes -> String UTF8 Real
           $Bytes = [System.Convert]::FromBase64String($env:KEY_BASE64)
           $KeyString = [System.Text.Encoding]::UTF8.GetString($Bytes)
 
-          # Escribir el String al archivo (con codificación UTF8 explícita sin BOM si es posible, o default)
-          [System.IO.File]::WriteAllText($KeyFile, $KeyString)
+          # Escribir usando ASCII para eliminar cualquier BOM
+          [System.IO.File]::WriteAllText($KeyFile, $KeyString, [System.Text.Encoding]::ASCII)
 
-          Write-Host "Clave privada restaurada correctamente a texto en: $KeyFile"
+          Write-Host "Clave escrita en ASCII en: $KeyFile"
+          # DEBUG: Ver si empieza correctamente
+          if ($KeyString.Length -gt 20) {
+            Write-Host "COMIENZO CLAVE: $($KeyString.Substring(0, 20))..."
+          }
 
-      # COMPILAR (SIN FIRMAR AÚN)
+      # COMPILAR
       - name: Build Tauri App
         run: npm run tauri build
 
-      # FIRMAR Y GENERAR JSON A MANO (LA MAGIA)
+      # FIRMAR Y GENERAR JSON
       - name: Sign and Generate latest.json
-        env:
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
-          # 1. Buscar el MSI generado
           $MsiFile = Get-ChildItem -Path "src-tauri/target/release/bundle/msi/*.msi" | Select-Object -First 1
-          if (-not $MsiFile) { throw "No se encontró el archivo MSI para firmar" }
-          Write-Host "Firmando archivo: $($MsiFile.FullName)"
+          if (-not $MsiFile) { throw "No se encontró el MSI" }
 
-          # 2. Firmar usando tauri signer
-          # Ejecutamos el comando y capturamos TODA la salida
-          # NOTA: En Windows, pasar argumentos con espacios o rutas a npx/npm es delicado.
-          # Usamos la ruta local de la clave tauri.key
-
-          # Importante: tauri signer sign espera la contraseña por variable de entorno o flag
           $Env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = "${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}"
 
-          # Ejecutar firma y guardar salida en variable
+          # Ejecutar firma
           $SignOutput = npm run tauri signer sign -- --password "$Env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD" -k "tauri.key" "$($MsiFile.FullName)" 2>&1 | Out-String
-
-          Write-Host "Output de Firma: $SignOutput"
-
-          # 3. Extraer la firma Base64 de la salida (Tu clave pública empieza por dW...)
-          # La firma suele ser la última línea o estar en el output. 
-          # Buscamos una cadena larga que parezca Base64
-          # Vamos a buscar el archivo .sig que debería haber generado
+          Write-Host "Output Firma: $SignOutput"
 
           $SigFile = "$($MsiFile.FullName).sig"
           if (Test-Path $SigFile) {
              $Signature = Get-Content $SigFile
-             Write-Host "✅ Firma encontrada en archivo .sig: $Signature"
+             Write-Host "✅ Firma OK"
           } else {
-             # Si no hay archivo .sig, intentamos parsear (fallback)
-             throw "❌ ERROR: El comando signer no generó un archivo .sig"
+             # Fallback: Intentar parsear output por si acaso
+             if ($SignOutput -match "([a-zA-Z0-9+/]{60,}=*)") {
+                $Signature = $matches[1]
+                Write-Host "✅ Firma recuperada del output"
+             } else {
+                throw "❌ ERROR DE FIRMA"
+             }
           }
 
-          # 4. Construir latest.json
+          # JSON
           $Version = "${{ github.ref_name }}".TrimStart('v')
           $PubDate = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
           $DownloadUrl = "https://github.com/${{ github.repository }}/releases/download/v$Version/$($MsiFile.Name)"
@@ -105,8 +97,7 @@ jobs:
 
           $JsonPath = Join-Path (Get-Location) "latest.json"
           Set-Content -Path $JsonPath -Value $JsonContent -Encoding UTF8
-          Write-Host "✅ latest.json generado en: $JsonPath"
-          Get-Content $JsonPath
+          Write-Host "JSON creado en $JsonPath"
 
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v1
