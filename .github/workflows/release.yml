@@ -1,4 +1,4 @@
-name: Release Windows UTF8 No BOM
+name: Release Windows v2 Keys
 on:
   push:
     tags:
@@ -51,16 +51,14 @@ jobs:
       - name: Build Tauri App
         run: npm run tauri build
 
-      # FIRMAR Y GENERAR JSON
+      # FIRMAR Y GENERAR JSON (SIN CONTRASEÑA)
       - name: Sign and Generate latest.json
         run: |
           $MsiFile = Get-ChildItem -Path "src-tauri/target/release/bundle/msi/*.msi" | Select-Object -First 1
           if (-not $MsiFile) { throw "No se encontró el MSI" }
 
-          $Env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = "${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}"
-
-          # Ejecutar firma
-          $SignOutput = npm run tauri signer sign -- --password "$Env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD" -k "tauri.key" "$($MsiFile.FullName)" 2>&1 | Out-String
+          # Ejecutar firma SIN contraseña (nueva clave no tiene password)
+          $SignOutput = npm run tauri signer sign -- -k "tauri.key" "$($MsiFile.FullName)" 2>&1 | Out-String
           Write-Host "Output Firma: $SignOutput"
 
           $SigFile = "$($MsiFile.FullName).sig"
