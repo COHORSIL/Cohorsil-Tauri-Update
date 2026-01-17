@@ -28,14 +28,20 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # DECODIFICAR CLAVE DESDE BASE64
+      # DECODIFICAR CLAVE DESDE BASE64 A TEXTO (NO BINARIO)
       - name: Decode Signing Key
         env:
           KEY_BASE64: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         run: |
           $KeyFile = "$PWD\tauri.key"
-          [System.IO.File]::WriteAllBytes($KeyFile, [System.Convert]::FromBase64String($env:KEY_BASE64))
-          Write-Host "Clave privada decodificada correctamente en: $KeyFile"
+          # Convertir Base64 -> Array de Bytes -> String UTF8 Real
+          $Bytes = [System.Convert]::FromBase64String($env:KEY_BASE64)
+          $KeyString = [System.Text.Encoding]::UTF8.GetString($Bytes)
+
+          # Escribir el String al archivo (con codificación UTF8 explícita sin BOM si es posible, o default)
+          [System.IO.File]::WriteAllText($KeyFile, $KeyString)
+
+          Write-Host "Clave privada restaurada correctamente a texto en: $KeyFile"
 
       # COMPILAR (SIN FIRMAR AÚN)
       - name: Build Tauri App
