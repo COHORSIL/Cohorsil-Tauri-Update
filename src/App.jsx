@@ -17,7 +17,7 @@ function App() {
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600 mb-4 animate-pulse">
-            Cohorsil App v0.1.23 (File Path Fix) 📁
+            Cohorsil App v0.1.24 (Key Only) 🔐
           </h1>
           <p className="text-gray-300 text-lg">
             Build amazing desktop applications with modern web technologies

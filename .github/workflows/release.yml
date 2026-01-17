@@ -1,4 +1,4 @@
-name: Release Windows v2 Keys
+name: Release Windows Key Only
 on:
   push:
     tags:
@@ -28,53 +28,59 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # DECODIFICAR BASE64 Y ESCRIBIR CON UTF-8 SIN BOM
+      # DECODIFICAR Y EXTRAER SOLO LA SEGUNDA LÍNEA (LA CLAVE)
       - name: Decode and Write Key
         run: |
           $KeyFile = "$PWD\tauri.key"
           $Base64Content = "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}"
 
-          # Decodificar Base64 a bytes
+          # Decodificar Base64
           $Bytes = [System.Convert]::FromBase64String($Base64Content)
-
-          # Convertir bytes a string UTF-8
           $KeyText = [System.Text.Encoding]::UTF8.GetString($Bytes)
 
-          # Escribir con UTF-8 sin BOM
-          $Utf8NoBom = New-Object System.Text.UTF8Encoding $false
-          [System.IO.File]::WriteAllText($KeyFile, $KeyText, $Utf8NoBom)
+          # Separar por líneas y tomar SOLO la segunda (la clave real, sin comentario)
+          $Lines = $KeyText -split "`n"
+          if ($Lines.Count -ge 2) {
+              $RawKey = $Lines[1].Trim()
+              Write-Host "✅ Extrayendo solo la clave (línea 2, sin comentario)"
+          } else {
+              throw "❌ El secreto no tiene el formato esperado"
+          }
 
-          Write-Host "✅ Clave decodificada y escrita (UTF-8 sin BOM)"
-          Write-Host "Primeros 30 caracteres: $($KeyText.Substring(0, 30))..."
+          # Escribir SOLO la clave
+          $Utf8NoBom = New-Object System.Text.UTF8Encoding $false
+          [System.IO.File]::WriteAllText($KeyFile, $RawKey, $Utf8NoBom)
+
+          Write-Host "Primeros 10 chars: $($RawKey.Substring(0, 10))..."
 
       # COMPILAR
       - name: Build Tauri App
         run: npm run tauri build
 
-      # FIRMAR Y GENERAR JSON (SIN CONTRASEÑA)
+      # FIRMAR Y GENERAR JSON
       - name: Sign and Generate latest.json
         run: |
           $MsiFile = Get-ChildItem -Path "src-tauri/target/release/bundle/msi/*.msi" | Select-Object -First 1
           if (-not $MsiFile) { throw "No se encontró el MSI" }
 
-          # Ejecutar firma SIN contraseña usando -f para file path
+          # Firmar usando -f (file path)
           $SignOutput = npm run tauri signer sign -- -f "tauri.key" "$($MsiFile.FullName)" 2>&1 | Out-String
           Write-Host "Output Firma: $SignOutput"
 
           $SigFile = "$($MsiFile.FullName).sig"
           if (Test-Path $SigFile) {
              $Signature = Get-Content $SigFile
-             Write-Host "✅ Firma generada correctamente"
+             Write-Host "✅ Firma generada"
           } else {
              if ($SignOutput -match "([a-zA-Z0-9+/]{60,}=*)") {
                 $Signature = $matches[1]
-                Write-Host "✅ Firma recuperada del output"
+                Write-Host "✅ Firma del output"
              } else {
                 throw "❌ ERROR: No se pudo generar firma"
              }
           }
 
-          # Generar JSON
+          # JSON
           $Version = "${{ github.ref_name }}".TrimStart('v')
           $PubDate = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
           $DownloadUrl = "https://github.com/${{ github.repository }}/releases/download/v$Version/$($MsiFile.Name)"
