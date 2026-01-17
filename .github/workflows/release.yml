@@ -57,8 +57,8 @@ jobs:
           $MsiFile = Get-ChildItem -Path "src-tauri/target/release/bundle/msi/*.msi" | Select-Object -First 1
           if (-not $MsiFile) { throw "No se encontró el MSI" }
 
-          # Ejecutar firma SIN contraseña (nueva clave no tiene password)
-          $SignOutput = npm run tauri signer sign -- -k "tauri.key" "$($MsiFile.FullName)" 2>&1 | Out-String
+          # Ejecutar firma SIN contraseña usando -f para file path
+          $SignOutput = npm run tauri signer sign -- -f "tauri.key" "$($MsiFile.FullName)" 2>&1 | Out-String
           Write-Host "Output Firma: $SignOutput"
 
           $SigFile = "$($MsiFile.FullName).sig"
