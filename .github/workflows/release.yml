@@ -1,4 +1,4 @@
-name: Release Windows ASCII
+name: Release Windows Raw Key
 on:
   push:
     tags:
@@ -28,7 +28,7 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # DECODIFICAR CLAVE DESDE BASE64 A TEXTO ASCII PURO
+      # DECODIFICAR Y LIMPIAR CLAVE (ONLY RAW KEY)
       - name: Decode Signing Key
         env:
           KEY_BASE64: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -37,13 +37,33 @@ jobs:
           $Bytes = [System.Convert]::FromBase64String($env:KEY_BASE64)
           $KeyString = [System.Text.Encoding]::UTF8.GetString($Bytes)
 
-          # Escribir usando ASCII para eliminar cualquier BOM
-          [System.IO.File]::WriteAllText($KeyFile, $KeyString, [System.Text.Encoding]::ASCII)
+          # Separar por saltos de línea y tomar la segunda línea (la clave real)
+          $Lines = $KeyString -split "`n"
 
-          Write-Host "Clave escrita en ASCII en: $KeyFile"
-          # DEBUG: Ver si empieza correctamente
-          if ($KeyString.Length -gt 20) {
-            Write-Host "COMIENZO CLAVE: $($KeyString.Substring(0, 20))..."
+          # Intentar encontrar la línea que tiene la clave (empieza por RW)
+          $RawKey = ""
+          foreach ($line in $Lines) {
+              $k = $line.Trim()
+              if ($k.StartsWith("RW")) {
+                  $RawKey = $k
+                  break
+              }
+          }
+
+          if ($RawKey) {
+             [System.IO.File]::WriteAllText($KeyFile, $RawKey, [System.Text.Encoding]::ASCII)
+             Write-Host "✅ Clave limpia detectada y escrita (sin comentarios)"
+             Write-Host "DEBUG START: $($RawKey.Substring(0, 5))..."
+          } else {
+             # Fallback si no encuentra RW... escribimos la 2da línea a ciegas
+             if ($Lines.Count -ge 2) {
+                 $RawKey = $Lines[1].Trim()
+                 [System.IO.File]::WriteAllText($KeyFile, $RawKey, [System.Text.Encoding]::ASCII)
+                 Write-Host "⚠️ Clave no empezaba por RW, pero usamos línea 2"
+             } else {
+                 Write-Host "❌ ESTRUCTURA DE CLAVE INESPERADA. Escribiendo todo..."
+                 [System.IO.File]::WriteAllText($KeyFile, $KeyString, [System.Text.Encoding]::ASCII)
+             }
           }
 
       # COMPILAR
@@ -67,7 +87,7 @@ jobs:
              $Signature = Get-Content $SigFile
              Write-Host "✅ Firma OK"
           } else {
-             # Fallback: Intentar parsear output por si acaso
+             # Fallback: Intentar parsear output
              if ($SignOutput -match "([a-zA-Z0-9+/]{60,}=*)") {
                 $Signature = $matches[1]
                 Write-Host "✅ Firma recuperada del output"
